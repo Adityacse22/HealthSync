@@ -1,0 +1,223 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+@layer base {
+  :root {
+    --background: 210 50% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 84% 48%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 213 27% 84%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/30 rounded-full backdrop-blur-sm transition-colors;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/50;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-lg rounded-2xl transition-all duration-300;
+  }
+  
+  .glass-card:hover {
+    @apply shadow-xl border-medical-200/40 transform -translate-y-1;
+  }
+  
+  .glass-card-dark {
+    @apply bg-gray-900/70 backdrop-blur-lg border border-gray-800/30 shadow-lg rounded-2xl transition-all duration-300;
+  }
+  
+  .glass-card-dark:hover {
+    @apply shadow-xl border-medical-700/40 transform -translate-y-1;
+  }
+  
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg text-white bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-600 hover:to-medical-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 font-medium;
+  }
+  
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg text-medical-800 bg-white border border-medical-100 hover:bg-medical-50 transition-all duration-300 shadow-sm hover:shadow-md transform hover:-translate-y-1 font-medium;
+  }
+
+  .nav-link {
+    @apply relative px-3 py-2 text-foreground/80 hover:text-primary transition-colors duration-300 before:absolute before:bottom-0 before:left-0 before:w-full before:h-0.5 before:bg-primary before:scale-x-0 before:origin-right before:transition-transform before:duration-300 hover:before:scale-x-100 hover:before:origin-left font-medium;
+  }
+
+  .nav-link-active {
+    @apply text-primary before:scale-x-100;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-24;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .stagger-animation > * {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: staggerFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes staggerFade {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Apply staggered delays to children */
+  .stagger-animation > *:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  .stagger-animation > *:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .stagger-animation > *:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  .stagger-animation > *:nth-child(4) {
+    animation-delay: 0.4s;
+  }
+  .stagger-animation > *:nth-child(5) {
+    animation-delay: 0.5s;
+  }
+  .stagger-animation > *:nth-child(6) {
+    animation-delay: 0.6s;
+  }
+  
+  /* Hover effect utilities */
+  .hover-scale {
+    @apply transition-transform duration-300 hover:scale-105;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-medical-400/20;
+  }
+  
+  .hover-elevate {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+  
+  .hover-bright {
+    @apply transition-all duration-300 hover:brightness-110;
+  }
+  
+  .pulse-on-hover:hover {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+  
+  .grow-on-hover {
+    @apply transition-transform duration-300 hover:scale-[1.03];
+  }
+  
+  .hover-underline {
+    @apply relative after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-medical-500 after:scale-x-0 after:origin-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-left;
+  }
+}
