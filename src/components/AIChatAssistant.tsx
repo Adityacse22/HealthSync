@@ -85,6 +85,28 @@ const AIChatAssistant = () => {
     }));
   }, [messages]);
 
+  // Trigger map search for health-related keywords
+  const triggerMapSearch = (responseText: string) => {
+    const healthcareKeywords = [
+      'hospital', 'urgent', 'emergency', 'severe',
+      'clinic', 'doctor', 'medical', 'treatment',
+      'pharmacy', 'prescription', 'medicine', 'care center',
+      'healthcare', 'facility', 'professional medical',
+      'seek', 'visit', 'nearby'
+    ];
+
+    const shouldTriggerMap = healthcareKeywords.some(keyword =>
+      responseText.toLowerCase().includes(keyword)
+    );
+
+    if (shouldTriggerMap && (window as any).Map3DSearch) {
+      // Delay slightly to ensure user sees response first
+      setTimeout(() => {
+        (window as any).Map3DSearch.searchNearbyHealthcare('all', 5000);
+      }, 500);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = input.trim();
@@ -135,6 +157,9 @@ const AIChatAssistant = () => {
         "I'm experiencing technical difficulties. Please try again in a moment.";
 
       setMessages((prev) => [...prev, createMessage('model', aiText)]);
+      
+      // Trigger map search if response contains healthcare keywords
+      triggerMapSearch(aiText);
     } catch (apiError) {
       console.error(apiError);
       const friendlyMessage =

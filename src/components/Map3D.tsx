@@ -21,6 +21,8 @@ interface HealthcareFacility {
   position: google.maps.LatLng;
   marker: google.maps.Marker;
   infoWindow?: google.maps.InfoWindow;
+  facilityType: 'hospital' | 'clinic' | 'pharmacy' | 'health' | 'unknown';
+  distance?: number; // Distance in km from user location
 }
 
 type FacilityType = 'hospital' | 'doctor' | 'pharmacy' | 'health' | 'all';
@@ -31,6 +33,7 @@ const Map3D = () => {
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const facilitiesRef = useRef<HealthcareFacility[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const mapComponentRef = useRef<any>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -55,6 +58,113 @@ const Map3D = () => {
       case 'all':
       default:
         return ['hospital', 'doctor', 'dentist', 'pharmacy', 'drugstore', 'health'];
+    }
+  };
+
+  // Detect facility type from place types and name
+  const detectFacilityType = (place: google.maps.places.PlaceResult, searchType: string): 'hospital' | 'clinic' | 'pharmacy' | 'health' | 'unknown' => {
+    const types = place.types || [];
+    const name = (place.name || '').toLowerCase();
+
+    if (types.includes('hospital') || name.includes('hospital')) {
+      return 'hospital';
+    }
+    if (types.includes('pharmacy') || types.includes('drugstore') || name.includes('pharmacy') || name.includes('chemist')) {
+      return 'pharmacy';
+    }
+    if (types.includes('doctor') || types.includes('dentist') || types.includes('physiotherapist') || 
+        name.includes('clinic') || name.includes('doctor') || name.includes('healthcare') || name.includes('medical')) {
+      return 'clinic';
+    }
+    if (types.includes('health') || name.includes('health')) {
+      return 'health';
+    }
+
+    // Fallback to search type
+    if (searchType === 'hospital') return 'hospital';
+    if (searchType === 'pharmacy' || searchType === 'drugstore') return 'pharmacy';
+    if (searchType === 'doctor' || searchType === 'dentist' || searchType === 'physiotherapist') return 'clinic';
+    
+    return 'unknown';
+  };
+
+  // Get marker color based on facility type
+  const getMarkerColor = (facilityType: 'hospital' | 'clinic' | 'pharmacy' | 'health' | 'unknown'): string => {
+    switch (facilityType) {
+      case 'hospital':
+        return '#ef4444'; // RED
+      case 'clinic':
+        return '#3b82f6'; // BLUE
+      case 'pharmacy':
+        return '#22c55e'; // GREEN
+      case 'health':
+        return '#f59e0b'; // AMBER
+      default:
+        return '#6b7280'; // GRAY
+    }
+  };
+
+  // Get custom SVG-based healthcare icon
+  const getHealthcareIcon = (facilityType: 'hospital' | 'clinic' | 'pharmacy' | 'health' | 'unknown'): google.maps.Icon => {
+    const iconConfigs: Record<string, { color: string; label: string; svg: string }> = {
+      hospital: {
+        color: '#ef4444',
+        label: '🏥',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="50"><defs><style>.hospital-bg { fill: #ef4444; } .hospital-cross { fill: white; }</style></defs><path class="hospital-bg" d="M32 4C17.6 4 6 15.6 6 30c0 8 4 15 10 19.5l16 12.5 16-12.5c6-4.5 10-11.5 10-19.5 0-14.4-11.6-26-26-26z"/><rect class="hospital-cross" x="28" y="24" width="8" height="16"/><rect class="hospital-cross" x="22" y="30" width="20" height="8"/></svg>`,
+      },
+      clinic: {
+        color: '#3b82f6',
+        label: '⚕️',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="38" height="48"><defs><style>.clinic-bg { fill: #3b82f6; } .clinic-stethoscope { fill: white; }</style></defs><path class="clinic-bg" d="M32 4C17.6 4 6 15.6 6 30c0 8 4 15 10 19.5l16 12.5 16-12.5c6-4.5 10-11.5 10-19.5 0-14.4-11.6-26-26-26z"/><circle class="clinic-stethoscope" cx="22" cy="26" r="4"/><path class="clinic-stethoscope" d="M22 30 Q18 35 14 35 M22 30 Q26 35 30 35 M30 35 L38 35 L38 38 L30 38 L30 35"/></svg>`,
+      },
+      pharmacy: {
+        color: '#22c55e',
+        label: '💊',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="35" height="45"><defs><style>.pharmacy-bg { fill: #22c55e; } .pharmacy-pill { fill: white; }</style></defs><path class="pharmacy-bg" d="M32 4C17.6 4 6 15.6 6 30c0 8 4 15 10 19.5l16 12.5 16-12.5c6-4.5 10-11.5 10-19.5 0-14.4-11.6-26-26-26z"/><ellipse class="pharmacy-pill" cx="20" cy="28" rx="5" ry="6"/><ellipse class="pharmacy-pill" cx="32" cy="28" rx="5" ry="6"/><ellipse class="pharmacy-pill" cx="44" cy="28" rx="5" ry="6"/><rect class="pharmacy-pill" x="28" y="38" width="8" height="3" rx="1.5"/><rect class="pharmacy-pill" x="28" y="44" width="8" height="3" rx="1.5"/></svg>`,
+      },
+      health: {
+        color: '#f59e0b',
+        label: '🏥',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="36" height="46"><defs><style>.health-bg { fill: #f59e0b; } .health-heart { fill: white; }</style></defs><path class="health-bg" d="M32 4C17.6 4 6 15.6 6 30c0 8 4 15 10 19.5l16 12.5 16-12.5c6-4.5 10-11.5 10-19.5 0-14.4-11.6-26-26-26z"/><path class="health-heart" d="M32 22 C32 22 26 16 22 20 C18 24 22 30 32 38 C42 30 46 24 42 20 C38 16 32 22 32 22 Z"/></svg>`,
+      },
+      unknown: {
+        color: '#6b7280',
+        label: '📍',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="32" height="42"><defs><style>.unknown-bg { fill: #6b7280; } .unknown-dot { fill: white; }</style></defs><path class="unknown-bg" d="M32 4C17.6 4 6 15.6 6 30c0 8 4 15 10 19.5l16 12.5 16-12.5c6-4.5 10-11.5 10-19.5 0-14.4-11.6-26-26-26z"/><circle class="unknown-dot" cx="32" cy="28" r="6"/></svg>`,
+      },
+    };
+
+    const config = iconConfigs[facilityType] || iconConfigs.unknown;
+    const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(config.svg)}`;
+
+    return {
+      url: dataUrl,
+      scaledSize: new window.google.maps.Size(40, 50),
+      anchor: new window.google.maps.Point(20, 50),
+      labelOrigin: new window.google.maps.Point(20, 15)
+    };
+  };
+
+  // Calculate distance between two coordinates (in km)
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLng = (lng2 - lng1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Open Google Maps directions for a facility
+  const openDirections = (placeId: string, placeName: string) => {
+    if (userLocation) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=place_id:${placeId}&travelmode=driving`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      const url = `https://www.google.com/maps/search/${encodeURIComponent(placeName)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -209,25 +319,33 @@ const Map3D = () => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
           results.forEach((place) => {
             if (place.geometry && place.geometry.location) {
+              // Detect facility type for color-coding
+              const facilityType = detectFacilityType(place, type);
+              const markerColor = getMarkerColor(facilityType);
+              const customIcon = getHealthcareIcon(facilityType);
+
+              // Calculate distance from user location
+              const distance = calculateDistance(
+                location.lat,
+                location.lng,
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+              );
+
               const marker = new window.google.maps.Marker({
                 position: place.geometry.location,
                 map: mapRef.current!,
-                icon: {
-                  path: window.google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: '#ef4444',
-                  fillOpacity: 1,
-                  strokeColor: '#ffffff',
-                  strokeWeight: 2
-                },
-                title: place.name || 'Healthcare Facility'
+                icon: customIcon,
+                title: place.name || 'Healthcare Facility',
+                optimized: false // Smooth rendering
               });
 
               // Create initial info window content with basic data
-              const initialInfoContent = createInfoWindowContent(place);
+              const initialInfoContent = createInfoWindowContent(place, facilityType, distance, place.place_id || '');
 
               const infoWindow = new window.google.maps.InfoWindow({
-                content: initialInfoContent
+                content: initialInfoContent,
+                maxWidth: 350
               });
 
               // Add click listener to marker - fetch full details on click
@@ -247,19 +365,19 @@ const Map3D = () => {
                   fetchPlaceDetails(
                     place.place_id,
                     (detailedPlace) => {
-                      const detailedInfoContent = createInfoWindowContent(detailedPlace);
+                      const detailedInfoContent = createInfoWindowContent(detailedPlace, facilityType, distance, place.place_id || '');
                       infoWindow.setContent(detailedInfoContent);
                     },
                     () => {
                       // If details fetch fails, show basic info with error message
-                      const errorContent = createInfoWindowContent(place) + 
+                      const errorContent = createInfoWindowContent(place, facilityType, distance, place.place_id || '') + 
                         '<div style="margin-top: 8px; padding: 8px; background-color: #fef3c7; border-radius: 4px; font-size: 12px; color: #92400e;">⚠️ Some details could not be loaded. Showing available information.</div>';
                       infoWindow.setContent(errorContent);
                     }
                   );
                 } else {
                   // No place_id available, show basic info
-                  const basicContent = createInfoWindowContent(place);
+                  const basicContent = createInfoWindowContent(place, facilityType, distance, '');
                   infoWindow.setContent(basicContent);
                 }
               });
@@ -275,7 +393,9 @@ const Map3D = () => {
                 isOpen: place.opening_hours?.isOpen(),
                 position: place.geometry.location,
                 marker,
-                infoWindow
+                infoWindow,
+                facilityType,
+                distance
               };
 
               allFacilities.push(facility);
@@ -294,7 +414,7 @@ const Map3D = () => {
   };
 
   // Create info window content HTML
-  const createInfoWindowContent = (place: google.maps.places.PlaceResult): string => {
+  const createInfoWindowContent = (place: google.maps.places.PlaceResult, facilityType?: 'hospital' | 'clinic' | 'pharmacy' | 'health' | 'unknown', distance?: number, placeId?: string): string => {
     const name = place.name || 'Unknown Facility';
     const address = place.vicinity || place.formatted_address || 'Address not available';
     const phone = place.formatted_phone_number || place.international_phone_number || 'Not available';
@@ -306,6 +426,15 @@ const Map3D = () => {
     const statusColor = isOpen !== undefined ? (isOpen ? '#10b981' : '#ef4444') : '#6b7280';
     const statusText = isOpen !== undefined ? (isOpen ? 'Open' : 'Closed') : 'Status unknown';
 
+    // Get facility type badge
+    const facilityTypeLabel = facilityType ? facilityType.charAt(0).toUpperCase() + facilityType.slice(1) : '';
+    const facilityTypeBg = facilityType === 'hospital' ? '#fee2e2' : 
+                          facilityType === 'clinic' ? '#dbeafe' :
+                          facilityType === 'pharmacy' ? '#dcfce7' : '#fef3c7';
+    const facilityTypeColor = facilityType === 'hospital' ? '#b91c1c' :
+                             facilityType === 'clinic' ? '#1e40af' :
+                             facilityType === 'pharmacy' ? '#15803d' : '#b45309';
+
     let starsHtml = '';
     if (rating > 0) {
       for (let i = 0; i < 5; i++) {
@@ -314,9 +443,17 @@ const Map3D = () => {
       }
     }
 
+    const distanceText = distance ? `${distance.toFixed(1)} km away` : '';
+
     return `
       <div style="min-width: 280px; max-width: 320px; font-family: 'Roboto', sans-serif; padding: 4px;">
-        <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #1f2937; line-height: 1.3;">${name}</h3>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937; line-height: 1.3; flex: 1;">${name}</h3>
+          ${facilityTypeLabel ? `<span style="display: inline-block; padding: 4px 8px; background-color: ${facilityTypeBg}; color: ${facilityTypeColor}; font-size: 11px; font-weight: 600; border-radius: 4px; white-space: nowrap; margin-left: 8px;">${facilityTypeLabel.toUpperCase()}</span>` : ''}
+        </div>
+        
+        ${distanceText ? `<div style="margin-bottom: 12px; padding: 8px; background-color: #f0fdf4; border-left: 3px solid #22c55e; border-radius: 4px; font-size: 12px; color: #15803d; font-weight: 500;">📍 ${distanceText}</div>` : ''}
+        
         <div style="margin-bottom: 12px; font-size: 13px; color: #6b7280; line-height: 1.6;">
           <div style="margin-bottom: 6px; display: flex; align-items: flex-start; gap: 6px;">
             <span style="font-size: 14px; margin-top: 2px;">📍</span>
@@ -324,7 +461,7 @@ const Map3D = () => {
           </div>
           <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
             <span style="font-size: 14px;">📞</span>
-            <span>${phone}</span>
+            <a href="tel:${phone}" style="color: #667eea; text-decoration: none; font-weight: 500;">${phone}</a>
           </div>
         </div>
         ${rating > 0 ? `
@@ -342,15 +479,10 @@ const Map3D = () => {
             ${statusText}
           </span>
         </div>
-        ${website ? `
-        <a href="${website}" target="_blank" rel="noopener noreferrer" 
-           style="color: #667eea; text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; background-color: #f3f4f6; transition: background-color 0.2s; font-weight: 500;"
-           onmouseover="this.style.backgroundColor='#e5e7eb'"
-           onmouseout="this.style.backgroundColor='#f3f4f6'">
-          <span style="font-size: 14px;">🌐</span>
-          Visit Website
-        </a>
-        ` : ''}
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          ${placeId ? `<button onclick="window.openDirections('${placeId}', '${name.replace(/'/g, "\\'")}'); return false;" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 100px;">📍 Get Directions</button>` : ''}
+          ${website ? `<a href="${website}" target="_blank" rel="noopener noreferrer" style="flex: 1; padding: 8px 12px; background-color: #f3f4f6; color: #667eea; text-decoration: none; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: center; min-width: 100px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e5e7eb'" onmouseout="this.style.backgroundColor='#f3f4f6'">🌐 Website</a>` : ''}
+        </div>
         <style>
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -363,6 +495,24 @@ const Map3D = () => {
 
   // Initialize Google Maps
   useEffect(() => {
+    // Expose openDirections globally for info window button clicks
+    (window as any).openDirections = openDirections;
+
+    // Expose searchNearbyHealthcare for chatbot integration
+    mapComponentRef.current = {
+      searchNearbyHealthcare: (facilityFilter: FacilityType = 'all', radius: number = 5000) => {
+        setFacilityType(facilityFilter);
+        setSearchRadius(radius);
+        if (userLocation) {
+          searchNearbyFacilities(userLocation);
+        } else {
+          requestUserLocation();
+        }
+      }
+    };
+
+    (window as any).Map3DSearch = mapComponentRef.current;
+
     // Function to check and initialize map
     const checkAndInit = () => {
       if (window.google && window.google.maps && mapContainerRef.current && !mapRef.current) {
@@ -385,8 +535,12 @@ const Map3D = () => {
     }, 100);
 
     // Cleanup
-    return () => clearInterval(checkInterval);
-  }, []);
+    return () => {
+      clearInterval(checkInterval);
+      delete (window as any).openDirections;
+      delete (window as any).Map3DSearch;
+    };
+  }, [userLocation]); // Include userLocation so openDirections always has current value
 
   const initializeMap = () => {
     if (!mapContainerRef.current || !window.google || !window.google.maps) {
@@ -474,6 +628,29 @@ const Map3D = () => {
           <MapPin className="text-[#667eea]" size={20} />
           Find Healthcare Facilities
         </h2>
+
+        {/* Marker Legend */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Marker Legend</h3>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-sm"></div>
+              <span className="text-sm text-gray-700">Hospitals</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-sm"></div>
+              <span className="text-sm text-gray-700">Clinics/Doctors</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+              <span className="text-sm text-gray-700">Pharmacies</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-amber-400 rounded-full border-2 border-white shadow-sm"></div>
+              <span className="text-sm text-gray-700">Health Centers</span>
+            </div>
+          </div>
+        </div>
 
         {/* Facility Type Filter */}
         <div className="mb-4">
