@@ -185,11 +185,9 @@ const HeroSection = () => {
             </div>
           </div>
           
-          <div className="lg:ml-auto animate-float w-full">
-            <div className="absolute -inset-1 bg-gradient-to-r from-medical-200 to-medical-400 rounded-3xl blur-3xl opacity-30 pointer-events-none"></div>
-            <div className="relative h-[500px] md:h-[600px] lg:h-[650px]">
-              <AIChatAssistant />
-            </div>
+          <div className="lg:ml-auto animate-float">
+            <div className="absolute -inset-1 bg-gradient-to-r from-medical-200 to-medical-400 rounded-2xl blur-3xl opacity-30 pointer-events-none"></div>
+            <AIChatAssistant />
           </div>
         </div>
       </div>
